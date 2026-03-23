@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+logs/*.db
+logs/*.txt
+.vscode/
+.idea/
+.streamlit/
+*.pptx
+read_pptx.py
+ppt_text.txt
