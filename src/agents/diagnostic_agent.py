@@ -38,6 +38,22 @@ ERROR_TRANSLATIONS = {
         "06_311": "BAPI purchase order creation failed — organizational assignment missing (plant not assigned to purchasing org). "
                   "Business Impact: Procurement process blocked for the affected plant.",
     },
+    "POSTING_ILLEGAL_STATEMENT": {
+        "GL_BLOCK": "ABAP short dump: Posting blocked for General Ledger account. "
+                    "Business Impact: Financial document posting failed, blocking month-end closing.",
+    },
+    "BAPI_PR_CREATE": {
+        "06_050": "BAPI Purchase Requisition creation failed — No valid source of supply (vendor/contract) found for the material. "
+                  "Business Impact: Automated procurement process broken.",
+    },
+    "BAPI_INCOMINGINVOICE_CREATE": {
+        "M8_082": "BAPI Invoice posting failed — Tax code inconsistency or missing tax configuration for the country. "
+                  "Business Impact: Accounts Payable process delayed, vendor payments blocked.",
+    },
+    "DEBMAS": {
+        "ED_51": "Customer Master IDoc failed — The customer record does not exist in the MDG system. "
+                 "Business Impact: Sales orders cannot be created for new customers.",
+    },
 }
 
 # ─── Root cause mapping (error subtype → causal KG node name) ──────────
@@ -48,6 +64,10 @@ ERROR_TO_KG_NODE = {
     ("ABAP_DUMP", "DBSQL_SQL_ERROR", "DBSQL_SQL_ERROR"): "ABAP DBSQL_SQL_ERROR dump",
     ("MDG_ERROR", "REPLICATION_TIMEOUT", "MDG_REPL_408"): "MDG replication timeout",
     ("BAPI_ERROR", "BAPI_PO_CREATE1", "06_311"): "BAPI_PO_CREATE1 error",
+    ("ABAP_DUMP", "POSTING_ILLEGAL_STATEMENT", "GL_BLOCK"): "GL account blocked",
+    ("BAPI_ERROR", "BAPI_PR_CREATE", "06_050"): "PR creation - no source",
+    ("BAPI_ERROR", "BAPI_INCOMINGINVOICE_CREATE", "M8_082"): "Invoice tax mismatch",
+    ("IDOC", "DEBMAS", "ED_51"): "DEBMAS IDoc failure",
 }
 
 

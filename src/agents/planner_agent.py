@@ -60,6 +60,39 @@ FIX_PAYLOADS = {
             "po_number": "4500001234",
         },
     },
+    "Unblock GL account": {
+        "bapi": "BAPI_GL_ACC_CHANGE",
+        "action": "unblock_gl",
+        "parameters": {
+            "gl_account": "400000",
+            "company_code": "1000",
+        },
+    },
+    "Assign source of supply to material": {
+        "bapi": "BAPI_SOURCEDETERMIN_GET",
+        "action": "assign_source",
+        "parameters": {
+            "material_number": "100230",
+            "plant": "1000",
+            "vendor_number": "1040",
+        },
+    },
+    "Configure tax code for country": {
+        "bapi": "BAPI_TAX_CONFIG",
+        "action": "config_tax",
+        "parameters": {
+            "tax_code": "V1",
+            "country": "US",
+        },
+    },
+    "Create customer in MDG": {
+        "bapi": "BAPI_CUSTOMER_CREATE",
+        "action": "create_customer",
+        "parameters": {
+            "customer_number": "500010",
+            "name": "Auto-created Customer (Self-Healing)",
+        },
+    },
 }
 
 

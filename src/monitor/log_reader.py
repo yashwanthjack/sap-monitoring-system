@@ -91,6 +91,58 @@ SAP_ERROR_SCENARIOS = [
         "business_object": "Material",
         "transaction": "BD10",
     },
+    {
+        "id": None,
+        "timestamp": None,
+        "type": "ABAP_DUMP",
+        "subtype": "POSTING_ILLEGAL_STATEMENT",
+        "system": "ERP_PRD_100",
+        "message_code": "GL_BLOCK",
+        "raw_log": "Short dump POSTING_ILLEGAL_STATEMENT in program SAPLFACG. "
+                   "GL Account 400000 is blocked for direct postings in company code 1000.",
+        "severity": "HIGH",
+        "business_object": "GLAccount",
+        "transaction": "FB01",
+    },
+    {
+        "id": None,
+        "timestamp": None,
+        "type": "BAPI_ERROR",
+        "subtype": "BAPI_PR_CREATE",
+        "system": "ERP_PRD_100",
+        "message_code": "06_050",
+        "raw_log": "BAPI_PR_CREATE failed: No source of supply found for material 100230, plant 1000. "
+                   "Purchase requisition 10000567 could not be created.",
+        "severity": "MEDIUM",
+        "business_object": "PurchaseRequisition",
+        "transaction": "ME51N",
+    },
+    {
+        "id": None,
+        "timestamp": None,
+        "type": "BAPI_ERROR",
+        "subtype": "BAPI_INCOMINGINVOICE_CREATE",
+        "system": "ERP_PRD_100",
+        "message_code": "M8_082",
+        "raw_log": "BAPI_INCOMINGINVOICE_CREATE failed: Tax code V1 not defined for country US. "
+                   "Invoice verification stopped for PO 4500001234.",
+        "severity": "HIGH",
+        "business_object": "Invoice",
+        "transaction": "MIRO",
+    },
+    {
+        "id": None,
+        "timestamp": None,
+        "type": "IDOC",
+        "subtype": "DEBMAS",
+        "system": "ERP_PRD_100",
+        "message_code": "ED_51",
+        "raw_log": "IDoc DEBMAS06 0000000055556666 status 51: Application document not posted. "
+                   "Segment E1KNA1M: Customer 500010 does not exist in MDG system.",
+        "severity": "HIGH",
+        "business_object": "Customer",
+        "transaction": "BD12",
+    },
 ]
 
 

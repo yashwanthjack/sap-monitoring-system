@@ -85,6 +85,38 @@ class CausalKnowledgeGraph:
             description="Duplicate key in EKKO table causes SQL error short dump.",
         )
 
+        # ── GL Account chain ───────────────────────────────────────
+        self.graph.add_edge(
+            "GL account blocked for posting",
+            "GL account blocked",
+            relation="causes",
+            description="GL account status 'blocked' prevents direct financial postings.",
+        )
+
+        # ── Purchase Requisition chain ─────────────────────────────
+        self.graph.add_edge(
+            "Source of supply missing",
+            "PR creation - no source",
+            relation="causes",
+            description="No valid vendor/contract assigned to material/plant prevents PR creation.",
+        )
+
+        # ── Invoice/Tax chain ──────────────────────────────────────
+        self.graph.add_edge(
+            "Tax code not defined for country",
+            "Invoice tax mismatch",
+            relation="causes",
+            description="Missing tax configuration in T007 table blocks invoice verification.",
+        )
+
+        # ── Customer/DEBMAS chain ──────────────────────────────────
+        self.graph.add_edge(
+            "Customer not in MDG",
+            "DEBMAS IDoc failure",
+            relation="causes",
+            description="Missing customer master in MDG hub prevents DEBMAS IDoc replication.",
+        )
+
         # ── Fix relationships (what resolves what) ─────────────────
         fixes = {
             "Create material in MDG": ["Material not in MDG"],
@@ -92,6 +124,10 @@ class CausalKnowledgeGraph:
             "Assign plant to purchasing org": ["Plant-POrg assignment missing"],
             "Add unit of measure to T006": ["Unit of measure missing"],
             "Delete duplicate PO entry in EKKO": ["Duplicate PO key in EKKO"],
+            "Unblock GL account": ["GL account blocked for posting"],
+            "Assign source of supply to material": ["Source of supply missing"],
+            "Configure tax code for country": ["Tax code not defined for country"],
+            "Create customer in MDG": ["Customer not in MDG"],
         }
         for fix, causes in fixes.items():
             for cause in causes:

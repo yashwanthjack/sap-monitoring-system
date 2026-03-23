@@ -46,6 +46,30 @@ GOVERNANCE_POLICIES = {
         "max_auto_create_per_hour": 3,
         "description": "PO deletion is a sensitive operation. Auto-approved with audit in self-healing mode.",
     },
+    "unblock_gl": {
+        "allowed": True,
+        "requires_approval": True,
+        "max_auto_create_per_hour": 10,
+        "description": "Unblocking GL accounts is a high-privilege financial action.",
+    },
+    "assign_source": {
+        "allowed": True,
+        "requires_approval": False,
+        "max_auto_create_per_hour": 100,
+        "description": "Assigning source of supply is a standard procurement maintenance task.",
+    },
+    "config_tax": {
+        "allowed": True,
+        "requires_approval": True,
+        "max_auto_create_per_hour": 5,
+        "description": "Tax configuration changes are sensitive and impact all financial postings.",
+    },
+    "create_customer": {
+        "allowed": True,
+        "requires_approval": True,
+        "max_auto_create_per_hour": 20,
+        "description": "Customer master creation requires validation against MDG hub.",
+    },
 }
 
 
@@ -150,6 +174,18 @@ def execute_fix(plan: dict) -> dict:
             bapi_result = sap_simulator.bapi_uom_add(**params)
         elif action == "delete_duplicate_po":
             bapi_result = sap_simulator.bapi_po_delete_duplicate(**params)
+        elif action == "unblock_gl":
+            # Simulate unblocking GL account
+            bapi_result = {"status": "SUCCESS", "message": f"GL Account {params['gl_account']} unblocked for company {params['company_code']}."}
+        elif action == "assign_source":
+            # Simulate assigning source
+            bapi_result = {"status": "SUCCESS", "message": f"Source (Vendor {params['vendor_number']}) assigned to Material {params['material_number']}."}
+        elif action == "config_tax":
+            # Simulate tax config
+            bapi_result = {"status": "SUCCESS", "message": f"Tax code {params['tax_code']} configured for country {params['country']}."}
+        elif action == "create_customer":
+            # Simulate customer creation
+            bapi_result = {"status": "SUCCESS", "message": f"Customer {params['customer_number']} created in MDG hub."}
         else:
             bapi_result = {"status": "ERROR", "message": f"Unknown action: {action}"}
     except Exception as e:
