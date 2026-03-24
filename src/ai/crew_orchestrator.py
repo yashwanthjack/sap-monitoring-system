@@ -10,6 +10,10 @@ simulating the CrewAI multi-agent orchestration pattern.
 import sys
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+from crewai import Agent, Task, Crew, Process
+import json
+from crewai.tools import tool
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -18,6 +22,67 @@ from src.agents.diagnostic_agent import diagnose
 from src.agents.planner_agent import plan_fix
 from src.agents.remediation_agent import execute_fix
 from src.ai.audit_logger import log_action
+
+load_dotenv()
+
+# --- THE HACKATHON CHEAT CODE ---
+# Tricking CrewAI into thinking Groq is OpenAI
+os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY")
+os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
+os.environ["OPENAI_MODEL_NAME"] = "llama-3.1-8b-instant"
+
+# --- THE EYES (The Tool) ---
+
+@tool("Intercept SAP Telemetry")
+def intercept_sap_telemetry(dummy: str = "") -> str:
+    """Always use this tool to read the latest intercepted SAP error logs, IDocs, or ABAP dumps."""
+    
+    # This is the exact fake error your AI will fix during the live demo
+    mock_idoc_failure = {
+        "event": "IDOC_ERROR",
+        "type": "ORDERS05",
+        "timestamp": "2026-03-24T09:50:00Z",
+        "system_node": "SAP_PRD_HANA",
+        "error_code": "E055",
+        "cryptic_message": "Replication Timeout. VKORG missing for LIFNR VEND_8832.",
+        "business_impact": "Purchase order 4500012345 blocked from transmission."
+    }
+    return json.dumps(mock_idoc_failure)
+
+# ── Step 3: Define CrewAI Agents with the LLM brain ──────────────────
+diagnostic_agent = Agent(
+    role='SAP Diagnostic Specialist',
+    goal='Analyze system logs and identify root causes of failures',
+    backstory=(
+        'You are an expert SAP system administrator with 15+ years of experience '
+        'in SAP Basis, ABAP, and middleware (PI/PO). You specialize in reading '
+        'cryptic SAP error logs and translating them into clear root-cause analyses.'
+    ),
+    tools=[intercept_sap_telemetry],
+    allow_delegation=False
+)
+
+governance_agent = Agent(
+    role='SAP Causal Planning Specialist',
+    goal='Create remediation plans based on causal analysis of SAP system failures',
+    backstory=(
+        'You are a senior SAP solution architect who designs fix strategies by '
+        'tracing causal chains through the Knowledge Graph. You determine downstream '
+        'impact and select the optimal BAPI-level remediation for each failure.'
+    ),
+    allow_delegation=False
+)
+
+remediation_agent = Agent(
+    role='SAP Remediation & Governance Specialist',
+    goal='Execute remediation plans while enforcing governance policies',
+    backstory=(
+        'You are a governance-aware SAP operations engineer responsible for executing '
+        'fixes via BAPI calls. You enforce LeanIX and BRF+ policies before any change '
+        'is applied and maintain a complete audit trail of every action.'
+    ),
+    allow_delegation=False
+)
 
 
 def run_self_healing_pipeline(log_entry: dict | None = None, scenario_index: int | None = None) -> dict:
@@ -156,24 +221,45 @@ def run_self_healing_pipeline(log_entry: dict | None = None, scenario_index: int
     }
 
 
-if __name__ == "__main__":
-    # Quick test — run all scenarios
-    import json
-    from src.monitor.log_reader import SAP_ERROR_SCENARIOS
+from crewai import Task, Crew, Process
 
-    print("=" * 80)
-    print("  SAP Self-Healing Pipeline — Test Run")
-    print("=" * 80)
+# --- THE SELF-HEALING JOBS ---
 
-    for i in range(len(SAP_ERROR_SCENARIOS)):
-        print(f"\n{'─' * 60}")
-        print(f"  Scenario {i + 1}")
-        print(f"{'─' * 60}")
-        result = run_self_healing_pipeline(scenario_index=i)
-        print(f"  {result['summary']}")
-        for step in result["steps"]:
-            print(f"    Step {step['step']}: {step['agent']} — {step['status']}")
+diagnose_task = Task(
+    description="Intercept the latest SAP telemetry stream. Identify any cryptic ABAP short dumps or IDoc failures (e.g., ORDERS05, MATMAS) and determine the exact root cause.",
+    expected_output="A precise root-cause analysis translating the cryptic SAP error into actionable context.",
+    agent=diagnostic_agent 
+)
 
-    print(f"\n{'=' * 80}")
-    print("  All scenarios complete!")
-    print(f"{'=' * 80}")
+remediate_task = Task(
+    description="Based on the root cause, automatically generate the exact BAPI payload or data correction required to self-heal the system. Do not ask for IT intervention.",
+    expected_output="The exact JSON payload or technical command required to fix the error.",
+    agent=remediation_agent
+)
+
+audit_task = Task(
+    description="Review the generated remediation payload against zero-trust security policies. Verify the downstream impact and ensure segregation of duties before autonomous execution.",
+    expected_output="A final 'APPROVED' execution payload and a LeanIX-compliant audit log entry.",
+    agent=governance_agent # Remember to rename your planner_agent to this!
+)
+
+# --- THE AUTONOMOUS PIPELINE ---
+
+sap_self_healing_crew = Crew(
+    agents=[diagnostic_agent, remediation_agent, governance_agent],
+    tasks=[diagnose_task, remediate_task, audit_task],
+    process=Process.sequential, 
+    verbose=True 
+)
+
+if __name__ == '__main__':
+    print('🚀 Intercepting SAP Telemetry Stream...')
+    print('--------------------------------------------------')
+    
+    # This fires the first agent
+    final_result = sap_self_healing_crew.kickoff()
+    
+    print('\n==================================================')
+    print('✅ FINAL GOVERNANCE APPROVED EXECUTION:')
+    print('==================================================')
+    print(final_result)
