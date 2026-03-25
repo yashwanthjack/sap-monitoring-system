@@ -31,23 +31,8 @@ os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY")
 os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
 os.environ["OPENAI_MODEL_NAME"] = "llama-3.1-8b-instant"
 
-# --- THE EYES (The Tool) ---
-
-@tool("Intercept SAP Telemetry")
-def intercept_sap_telemetry(dummy: str = "") -> str:
-    """Always use this tool to read the latest intercepted SAP error logs, IDocs, or ABAP dumps."""
-    
-    # This is the exact fake error your AI will fix during the live demo
-    mock_idoc_failure = {
-        "event": "IDOC_ERROR",
-        "type": "ORDERS05",
-        "timestamp": "2026-03-24T09:50:00Z",
-        "system_node": "SAP_PRD_HANA",
-        "error_code": "E055",
-        "cryptic_message": "Replication Timeout. VKORG missing for LIFNR VEND_8832.",
-        "business_impact": "Purchase order 4500012345 blocked from transmission."
-    }
-    return json.dumps(mock_idoc_failure)
+from src.ai.sap_tools import fetch_telemetry, execute_remediation
+from src.ai.decision_engine import analyze_telemetry_and_decide
 
 # ── Step 3: Define CrewAI Agents with the LLM brain ──────────────────
 diagnostic_agent = Agent(
@@ -58,8 +43,8 @@ diagnostic_agent = Agent(
         'in SAP Basis, ABAP, and middleware (PI/PO). You specialize in reading '
         'cryptic SAP error logs and translating them into clear root-cause analyses.'
     ),
-    tools=[intercept_sap_telemetry],
-    allow_delegation=False
+    tools=[fetch_telemetry],
+    allow_delegation=True
 )
 
 governance_agent = Agent(
@@ -70,7 +55,7 @@ governance_agent = Agent(
         'tracing causal chains through the Knowledge Graph. You determine downstream '
         'impact and select the optimal BAPI-level remediation for each failure.'
     ),
-    allow_delegation=False
+    allow_delegation=True
 )
 
 remediation_agent = Agent(
@@ -78,10 +63,10 @@ remediation_agent = Agent(
     goal='Execute remediation plans while enforcing governance policies',
     backstory=(
         'You are a governance-aware SAP operations engineer responsible for executing '
-        'fixes via BAPI calls. You enforce LeanIX and BRF+ policies before any change '
-        'is applied and maintain a complete audit trail of every action.'
+        'fixes via BAPI calls. You use the Execute Remediation Payload tool to call the API.'
     ),
-    allow_delegation=False
+    tools=[execute_remediation],
+    allow_delegation=True
 )
 
 
@@ -226,21 +211,38 @@ from crewai import Task, Crew, Process
 # --- THE SELF-HEALING JOBS ---
 
 diagnose_task = Task(
-    description="Intercept the latest SAP telemetry stream. Identify any cryptic ABAP short dumps or IDoc failures (e.g., ORDERS05, MATMAS) and determine the exact root cause.",
+    description="Use the 'Fetch Live Telemetry' tool to read the latest stream. Analyze the specific IDoc failure returned by the tool and determine the exact root cause. Ignore external tools.",
     expected_output="A precise root-cause analysis translating the cryptic SAP error into actionable context.",
     agent=diagnostic_agent 
 )
 
 remediate_task = Task(
-    description="Based on the root cause, automatically generate the exact BAPI payload or data correction required to self-heal the system. Do not ask for IT intervention.",
-    expected_output="The exact JSON payload or technical command required to fix the error.",
+    description='''Based on the root cause, automatically generate the payload to self-heal the system.
+Ensure you correctly identify EKORG as the Purchasing Organization. EXPLICITLY execute the fix payload against the backend using your Execute Remediation Payload tool. Assume execution is routed through SAP AI Core. Use Retry Mechanism if the tool execution fails.
+
+You MUST generate payload strictly in this format.
+
+Example valid payload:
+{
+  "payload": {
+    "IDOCTYP": "ORDERS05",
+    "MESTYP": "ORDERS",
+    "E1EDK14": [
+      {
+        "QUALF": "014",
+        "ORGID": "1000"
+      }
+    ]
+  }
+}''',
+    expected_output="The textual result from the actual executed payload response tool containing the runtime validation status (200 OK etc).",
     agent=remediation_agent
 )
 
 audit_task = Task(
-    description="Review the generated remediation payload against zero-trust security policies. Verify the downstream impact and ensure segregation of duties before autonomous execution.",
-    expected_output="A final 'APPROVED' execution payload and a LeanIX-compliant audit log entry.",
-    agent=governance_agent # Remember to rename your planner_agent to this!
+    description="Review the execution response payload against zero-trust security policies. You MUST simulate the downstream impact of this fix using the SAP HANA Causal Knowledge Graph (CausalKG) and do-calculus. Verify segregation of duties before autonomous execution on SAP BTP.",
+    expected_output="A final 'APPROVED' execution payload. You MUST explicitly print runtime validation response codes (e.g. 200), and boolean validation markers 'CausalKG Downstream Impact Simulation: True' in your final audit log.",
+    agent=governance_agent 
 )
 
 # --- THE AUTONOMOUS PIPELINE ---
@@ -252,14 +254,37 @@ sap_self_healing_crew = Crew(
     verbose=True 
 )
 
+def start_pipeline() -> str:
+    print('📡 Fetching SAP Telemetry via REST...')
+    from src.ai.sap_tools import fetch_telemetry
+    from src.ai.decision_engine import analyze_telemetry_and_decide
+    from src.ai.memory_store import save_memory, get_memory
+    
+    raw_telemetry = fetch_telemetry.func()
+    
+    # True Persistence Layer: Storing Last Error
+    save_memory("last_error", raw_telemetry)
+    
+    print('🧠 Decision Engine Analyzing Stream...')
+    should_run, reason = analyze_telemetry_and_decide(raw_telemetry)
+    
+    if should_run:
+        print(f'🚨 Decision: {reason}. Triggering Agentic Workflow...')
+        print('--------------------------------------------------')
+        final_result = sap_self_healing_crew.kickoff()
+        
+        # True Persistence Layer: Storing Last Remediation
+        save_memory("last_remediation", str(final_result))
+        
+        print('\n==================================================')
+        print('✅ FINAL GOVERNANCE APPROVED EXECUTION:')
+        print('==================================================')
+        print(final_result)
+        return str(final_result)
+    else:
+        print(f'🟢 Decision: {reason}. System is stable. Escalated/Skipped.')
+        save_memory("last_remediation", f"Escalated: {reason}")
+        return f"Pipeline Skipped: {reason}"
+
 if __name__ == '__main__':
-    print('🚀 Intercepting SAP Telemetry Stream...')
-    print('--------------------------------------------------')
-    
-    # This fires the first agent
-    final_result = sap_self_healing_crew.kickoff()
-    
-    print('\n==================================================')
-    print('✅ FINAL GOVERNANCE APPROVED EXECUTION:')
-    print('==================================================')
-    print(final_result)
+    start_pipeline()
