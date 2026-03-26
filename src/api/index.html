@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP Engine Orchestrator</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg-master: #000000;
+            --bg-panel: #0a0a0a;
+            --bg-hover: #111111;
+            
+            --border-color: #1f1f1f;
+            --border-highlight: #333333;
+            
+            --text-main: #ededed;
+            --text-muted: #a1a1aa;
+            --text-dim: #52525b;
+            
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-master);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Navigation Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: var(--bg-master);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            background: #ffffff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-logo i { color: #000; width: 20px; height: 20px; }
+
+        .brand-titles h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+        }
+
+        .brand-titles p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: var(--bg-panel);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+        .status-dot.connected { background-color: var(--accent-green); }
+
+        .scenario-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .scenario-select {
+            background: var(--bg-panel);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            max-width: 320px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .scenario-select:focus { border-color: var(--accent-blue); }
+
+        .inject-btn {
+            background: var(--text-main);
+            color: var(--bg-master);
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .inject-btn:hover { opacity: 0.9; }
+        .inject-btn:active { transform: scale(0.97); }
+        .inject-btn.loading { opacity: 0.5; pointer-events: none; }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .core-dashboard {
+            display: flex;
+            flex: 1;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        .panel {
+            flex: 1;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header-tab {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-panel);
+        }
+
+        .panel-header-tab h2 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .panel-header-tab h2 i { color: var(--text-muted); width: 15px; height: 15px; }
+
+        .stream-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--bg-hover);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-highlight);
+        }
+
+        .logs-scrollbox {
+            flex: 1;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow-y: auto;
+        }
+
+        .logs-scrollbox::-webkit-scrollbar { width: 4px; }
+        .logs-scrollbox::-webkit-scrollbar-track { background: transparent; }
+        .logs-scrollbox::-webkit-scrollbar-thumb { background: var(--border-highlight); border-radius: 4px; }
+
+        .log-node {
+            background: var(--bg-master);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.85rem;
+            animation: slideUp 0.3s ease-out forwards;
+            position: relative;
+        }
+
+        .log-node::before {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .log-node.info::before { background: var(--accent-blue); }
+        .log-node.warning::before { background: var(--accent-orange); }
+        .log-node.error::before { background: var(--accent-red); }
+        .log-node.success::before { background: var(--accent-green); }
+
+        .log-node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.4rem;
+        }
+
+        .log-node-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .log-node.info .log-node-title { color: var(--accent-blue); }
+        .log-node.warning .log-node-title { color: var(--accent-orange); }
+        .log-node.error .log-node-title { color: var(--accent-red); }
+        .log-node.success .log-node-title { color: var(--accent-green); }
+
+        .log-node-title i { width: 13px; height: 13px; }
+
+        .log-node-time {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+        }
+
+        .json-terminal {
+            background: var(--bg-hover);
+            border-radius: 6px;
+            padding: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            margin-top: 0.5rem;
+        }
+
+        .json-key { color: var(--accent-blue); }
+        .json-string { color: var(--accent-green); }
+        .json-number { color: var(--accent-orange); }
+        .json-boolean { color: var(--accent-red); }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .empty-state i { width: 24px; height: 24px; margin-bottom: 0.75rem; color: var(--border-highlight); }
+        .empty-state p { font-size: 0.85rem; }
+
+        /* ═══════════════════ AUDIT TRAIL SIDEBAR ═══════════════════ */
+        .audit-sidebar {
+            width: 340px;
+            border-left: 1px solid var(--border-color);
+            background: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.3s, opacity 0.3s;
+        }
+
+        .audit-sidebar.collapsed {
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+            border-left: none;
+        }
+
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .audit-header h2 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .audit-header h2 i { color: var(--accent-purple); width: 15px; height: 15px; }
+
+        .audit-header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .audit-refresh-btn, .audit-close-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.25rem 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .audit-refresh-btn:hover, .audit-close-btn:hover {
+            color: var(--text-main);
+            border-color: var(--border-highlight);
+        }
+        .audit-refresh-btn i, .audit-close-btn i { width: 13px; height: 13px; }
+
+        .audit-scrollbox {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+
+        .audit-scrollbox::-webkit-scrollbar { width: 4px; }
+        .audit-scrollbox::-webkit-scrollbar-track { background: transparent; }
+        .audit-scrollbox::-webkit-scrollbar-thumb { background: var(--border-highlight); border-radius: 4px; }
+
+        .audit-entry {
+            background: var(--bg-master);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.7rem 0.85rem;
+            margin-bottom: 0.5rem;
+            animation: slideUp 0.2s ease-out;
+        }
+
+        .audit-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.35rem;
+        }
+
+        .audit-agent {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .audit-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+
+        .audit-action {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 0.25rem;
+        }
+
+        .audit-details {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .audit-badges {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+        }
+
+        .audit-badge {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.12rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .audit-badge.success { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .audit-badge.failed { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .audit-badge.passed { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .audit-badge.in-progress { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+        .audit-badge.default { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+
+        .audit-toggle-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .audit-toggle-btn:hover {
+            color: var(--text-main);
+            border-color: var(--accent-purple);
+        }
+        .audit-toggle-btn.active {
+            color: var(--accent-purple);
+            border-color: var(--accent-purple);
+            background: rgba(168,85,247,0.08);
+        }
+        .audit-toggle-btn i { width: 14px; height: 14px; }
+
+        .audit-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--text-dim);
+            text-align: center;
+        }
+        .audit-empty i { width: 20px; height: 20px; margin-bottom: 0.5rem; }
+        .audit-empty p { font-size: 0.8rem; }
+
+        /* Result Card */
+        .result-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .result-row {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+
+        .result-row:last-child { border-bottom: none; }
+
+        .result-label {
+            color: var(--text-dim);
+            font-weight: 500;
+            min-width: 90px;
+            white-space: nowrap;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.04em;
+            padding-top: 0.1rem;
+        }
+
+        .result-value {
+            color: var(--text-main);
+            word-break: break-word;
+        }
+
+        .result-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .result-badge.resolved { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .result-badge.failed { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .result-badge.passed { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+
+        .causal-chain {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--accent-orange);
+            padding: 0.3rem 0;
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <i data-lucide="box"></i>
+            </div>
+            <div class="brand-titles">
+                <h1>SAP Engine Orchestrator</h1>
+                <p>Autonomous Agent Operations</p>
+            </div>
+        </div>
+        
+        <div class="header-controls">
+            <div class="scenario-selector">
+                <select class="scenario-select" id="scenario-select">
+                    <option value="random">🎲 Random Error</option>
+                </select>
+                <button class="inject-btn" id="trigger-btn" onclick="triggerManual()">
+                    <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                    Simulate Error
+                </button>
+            </div>
+            <button class="audit-toggle-btn" id="audit-toggle" onclick="toggleAudit()">
+                <i data-lucide="shield-check"></i>
+                Audit Trail
+            </button>
+            <div class="status-badge">
+                <div class="status-dot" id="uplink-dot"></div>
+                <span id="uplink-text">Connecting</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <div class="core-dashboard">
+            <!-- Telemetry Interception Grid -->
+            <div class="panel">
+                <div class="panel-header-tab">
+                    <h2>
+                        <i data-lucide="activity"></i>
+                        BTP Event Mesh Stream
+                    </h2>
+                    <div class="stream-count" id="count-hook">0 EVENTS</div>
+                </div>
+                <div class="logs-scrollbox" id="incoming-logs">
+                    <div class="empty-state" id="empty-hook">
+                        <i data-lucide="inbox"></i>
+                        <p>Awaiting SAP Telemetry Streams...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Multi Agent Logic Processor -->
+            <div class="panel">
+                <div class="panel-header-tab">
+                    <h2>
+                        <i data-lucide="cpu"></i>
+                        Agent Executions
+                    </h2>
+                    <div class="stream-count" id="count-agent">IDLE</div>
+                </div>
+                <div class="logs-scrollbox" id="agent-logs">
+                    <div class="empty-state" id="empty-agent">
+                        <i data-lucide="terminal-square"></i>
+                        <p>Orchestrator Standby.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Trail Sidebar -->
+        <div class="audit-sidebar collapsed" id="audit-sidebar">
+            <div class="audit-header">
+                <h2>
+                    <i data-lucide="shield-check"></i>
+                    Governance Audit Trail
+                </h2>
+                <div class="audit-header-controls">
+                    <button class="audit-refresh-btn" onclick="loadAuditLog()" title="Refresh">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                    <button class="audit-close-btn" onclick="toggleAudit()" title="Close">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="audit-scrollbox" id="audit-scrollbox">
+                <div class="audit-empty" id="audit-empty">
+                    <i data-lucide="shield"></i>
+                    <p>No audit entries yet.<br>Run a simulation to generate logs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ═══════════════════ SCENARIO LOADER ═══════════════════
+        async function loadScenarios() {
+            try {
+                const res = await fetch('/api/scenarios');
+                const data = await res.json();
+                const select = document.getElementById('scenario-select');
+                data.scenarios.forEach((s, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = s.index;
+                    const severityIcon = s.severity === 'CRITICAL' ? '🔴' : s.severity === 'HIGH' ? '🟠' : '🟡';
+                    opt.textContent = `${severityIcon} ${s.type}: ${s.subtype} — ${s.business_object}`;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.log('Could not load scenarios:', err);
+            }
+        }
+        loadScenarios();
+
+        // ═══════════════════ DASHBOARD LOGIC ═══════════════════
+        let hookCount = 0;
+        let agentCount = 0;
+
+        const formatJSON = (obj) => {
+            if (typeof obj !== 'object' || obj === null) return obj;
+            const jsonStr = JSON.stringify(obj, null, 2);
+            return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) cls = 'json-key';
+                    else cls = 'json-string';
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-boolean';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        };
+
+        const getIconForEvent = (typeClass) => {
+            switch(typeClass) {
+                case 'success': return 'check-circle';
+                case 'error': return 'x-circle';
+                case 'warning': return 'alert-circle';
+                default: return 'info';
+            }
+        };
+
+        function createMinimalNode(title, body, typeClass, timeStr = new Date().toLocaleTimeString()) {
+            const node = document.createElement('div');
+            node.className = `log-node ${typeClass}`;
+            const icon = getIconForEvent(typeClass);
+            let formattedBody = '';
+            if (body && body !== '' && Object.keys(body).length > 0) {
+                formattedBody = `<div class="json-terminal">${formatJSON(body)}</div>`;
+            }
+            node.innerHTML = `
+                <div class="log-node-header">
+                    <div class="log-node-title">
+                        <i data-lucide="${icon}"></i>
+                        <span>${title}</span>
+                    </div>
+                    <div class="log-node-time">${timeStr}</div>
+                </div>
+                ${formattedBody}
+            `;
+            return node;
+        }
+
+        function renderPipelineResult(data) {
+            // Parse the nested result JSON
+            let result = data.result || data;
+            if (typeof result === 'string') {
+                try { result = JSON.parse(result); } catch(e) { return null; }
+            }
+            if (!result.diagnosis && !result.execution) return null;
+
+            const resolved = result.resolved;
+            const diag = result.diagnosis || {};
+            const plan = result.plan || {};
+            const exec = result.execution || {};
+            const chains = plan.causal_chain || [];
+
+            let html = '<div class="result-card">';
+            html += `<div class="result-row"><span class="result-label">Status</span><span class="result-value"><span class="result-badge ${resolved ? 'resolved' : 'failed'}">${resolved ? '✅ RESOLVED' : '❌ FAILED'}</span></span></div>`;
+            if (diag.human_readable) {
+                html += `<div class="result-row"><span class="result-label">Diagnosis</span><span class="result-value">${diag.human_readable}</span></div>`;
+            }
+            if (diag.root_cause) {
+                html += `<div class="result-row"><span class="result-label">Root Cause</span><span class="result-value" style="color:var(--accent-orange);">${diag.root_cause}</span></div>`;
+            }
+            if (diag.severity) {
+                html += `<div class="result-row"><span class="result-label">Severity</span><span class="result-value">${diag.severity}</span></div>`;
+            }
+            if (chains.length > 0) {
+                html += `<div class="result-row"><span class="result-label">Causal Chain</span><span class="result-value"><div class="causal-chain">${chains.join('<br>')}</div></span></div>`;
+            }
+            if (plan.fix_name) {
+                html += `<div class="result-row"><span class="result-label">Fix</span><span class="result-value" style="color:var(--accent-green);font-weight:500;">${plan.fix_name}</span></div>`;
+            }
+            if (plan.verified_by_kg !== undefined) {
+                html += `<div class="result-row"><span class="result-label">KG Verified</span><span class="result-value"><span class="result-badge ${plan.verified_by_kg ? 'passed' : 'failed'}">${plan.verified_by_kg ? 'Yes' : 'No'}</span></span></div>`;
+            }
+            if (exec.governance_check) {
+                html += `<div class="result-row"><span class="result-label">Governance</span><span class="result-value"><span class="result-badge ${exec.governance_check === 'PASSED' ? 'passed' : 'failed'}">${exec.governance_check}</span></span></div>`;
+            }
+            if (exec.bapi_name) {
+                html += `<div class="result-row"><span class="result-label">BAPI</span><span class="result-value" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${exec.bapi_name}</span></div>`;
+            }
+            if (exec.bapi_result && exec.bapi_result.message) {
+                html += `<div class="result-row"><span class="result-label">Result</span><span class="result-value" style="color:var(--accent-green);">${exec.bapi_result.message}</span></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function dispatchEventToUI(type, data) {
+            const hookPane = document.getElementById('incoming-logs');
+            const agentPane = document.getElementById('agent-logs');
+            
+            const hookEmpty = document.getElementById('empty-hook');
+            if(hookEmpty) hookEmpty.remove();
+            const agtEmpty = document.getElementById('empty-agent');
+            if(agtEmpty) agtEmpty.remove();
+
+            let inferredTitle = data.message || type.replace(/_/g, ' ');
+            let payloadData = { ...data };
+            delete payloadData.message;
+
+            let typeClass = 'info';
+            if (type.includes('ERROR') || type.includes('FAIL')) typeClass = 'error';
+            if (type.includes('WARNING') || type.includes('DECISION')) typeClass = 'warning';
+            if (type.includes('SUCCESS') || type.includes('COMPLETED')) typeClass = 'success';
+
+            // Check if this is a pipeline completion with structured result
+            let richBody = null;
+            if (type.includes('COMPLETED') && data.result) {
+                richBody = renderPipelineResult(data);
+            }
+
+            let node;
+            if (richBody) {
+                node = document.createElement('div');
+                node.className = `log-node ${typeClass}`;
+                node.style.animation = 'slideUp 0.3s ease-out forwards';
+                const icon = getIconForEvent(typeClass);
+                node.innerHTML = `
+                    <div class="log-node-header">
+                        <div class="log-node-title">
+                            <i data-lucide="${icon}"></i>
+                            <span>Pipeline Execution Complete</span>
+                        </div>
+                        <div class="log-node-time">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                    ${richBody}
+                `;
+            } else {
+                node = createMinimalNode(inferredTitle, payloadData, typeClass);
+            }
+
+            if (type === 'INCOMING_ERROR' || type.includes('TELEMETRY')) {
+                hookPane.prepend(node);
+                hookCount++;
+                document.getElementById('count-hook').textContent = `${hookCount} EVENTS`;
+            } else {
+                agentPane.prepend(node);
+                agentCount++;
+                document.getElementById('count-agent').textContent = `ACTIVE (${agentCount})`;
+            }
+
+            lucide.createIcons();
+
+            // Auto-refresh audit log when execution completes
+            if (type.includes('COMPLETED') || type.includes('SUCCESS')) {
+                setTimeout(() => {
+                    if (!document.getElementById('audit-sidebar').classList.contains('collapsed')) {
+                        loadAuditLog();
+                    }
+                }, 1000);
+            }
+        }
+
+        // ═══════════════════ WEBSOCKET ═══════════════════
+        const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/dashboard`;
+        let client;
+
+        function initUplink() {
+            client = new WebSocket(wsUrl);
+            const textEle = document.getElementById('uplink-text');
+            const dotEle = document.getElementById('uplink-dot');
+
+            client.onopen = () => {
+                textEle.textContent = `Connected`;
+                dotEle.classList.add('connected');
+            };
+
+            client.onclose = () => {
+                textEle.textContent = `Disconnected`;
+                dotEle.classList.remove('connected');
+                setTimeout(initUplink, 3000);
+            };
+
+            client.onmessage = (e) => {
+                try {
+                    const packet = JSON.parse(e.data);
+                    dispatchEventToUI(packet.type, packet.data);
+                } catch(err) {
+                    console.log("WebSocket parse error:", err);
+                }
+            };
+        }
+
+        async function triggerManual() {
+            const btn = document.getElementById('trigger-btn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px;animation:pulse 1s infinite;"></i> Running...';
+            lucide.createIcons();
+
+            const scenarioVal = document.getElementById('scenario-select').value;
+            const body = { event: "CRITICAL_INJECTION" };
+            if (scenarioVal !== 'random') {
+                body.scenario_index = parseInt(scenarioVal);
+            }
+            body.message = `Synthetic SAP error triggered (scenario: ${scenarioVal})`;
+
+            try {
+                await fetch('/webhook/sap-event-mesh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            } catch (err) { }
+
+            setTimeout(() => {
+                btn.classList.remove('loading');
+                btn.innerHTML = '<i data-lucide="zap" style="width:14px;height:14px;"></i> Simulate BAPI Error';
+                lucide.createIcons();
+            }, 3000);
+        }
+
+        initUplink();
+
+        // ═══════════════════ AUDIT TRAIL ═══════════════════
+        function toggleAudit() {
+            const sidebar = document.getElementById('audit-sidebar');
+            const toggleBtn = document.getElementById('audit-toggle');
+            
+            sidebar.classList.toggle('collapsed');
+            toggleBtn.classList.toggle('active');
+
+            if (!sidebar.classList.contains('collapsed')) {
+                loadAuditLog();
+            }
+        }
+
+        function getStatusBadgeClass(status) {
+            if (!status) return 'default';
+            const s = status.toUpperCase();
+            if (s === 'SUCCESS' || s === 'RESOLVED') return 'success';
+            if (s === 'FAILED' || s === 'BLOCKED' || s === 'UNRESOLVED') return 'failed';
+            if (s === 'PASSED') return 'passed';
+            if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') return 'in-progress';
+            return 'default';
+        }
+
+        function formatAuditTime(isoStr) {
+            if (!isoStr) return '';
+            try {
+                const d = new Date(isoStr);
+                return d.toLocaleTimeString() + ' ' + d.toLocaleDateString();
+            } catch(e) { return isoStr; }
+        }
+
+        async function loadAuditLog() {
+            const scrollbox = document.getElementById('audit-scrollbox');
+            try {
+                const res = await fetch('/api/audit-log?limit=50');
+                const data = await res.json();
+                const entries = data.audit_log || [];
+
+                scrollbox.innerHTML = '';
+
+                if (entries.length === 0) {
+                    scrollbox.innerHTML = `
+                        <div class="audit-empty">
+                            <i data-lucide="shield"></i>
+                            <p>No audit entries yet.<br>Run a simulation to generate logs.</p>
+                        </div>`;
+                    lucide.createIcons();
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    const el = document.createElement('div');
+                    el.className = 'audit-entry';
+                    el.innerHTML = `
+                        <div class="audit-entry-header">
+                            <span class="audit-agent">${entry.agent || 'System'}</span>
+                            <span class="audit-time">${formatAuditTime(entry.timestamp)}</span>
+                        </div>
+                        <div class="audit-action">${entry.action || '—'}</div>
+                        <div class="audit-details">${entry.details || '—'}</div>
+                        <div class="audit-badges">
+                            <span class="audit-badge ${getStatusBadgeClass(entry.status)}">${entry.status || 'N/A'}</span>
+                            <span class="audit-badge ${getStatusBadgeClass(entry.governance_check)}">Gov: ${entry.governance_check || 'N/A'}</span>
+                        </div>
+                    `;
+                    scrollbox.appendChild(el);
+                });
+
+                lucide.createIcons();
+            } catch (err) {
+                scrollbox.innerHTML = `
+                    <div class="audit-empty">
+                        <i data-lucide="alert-triangle"></i>
+                        <p>Failed to load audit log.</p>
+                    </div>`;
+                lucide.createIcons();
+                console.error('Audit log error:', err);
+            }
+        }
+    </script>
+</body>
+</html>
